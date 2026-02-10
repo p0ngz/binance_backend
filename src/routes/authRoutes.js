@@ -2,13 +2,28 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const verifyJWT = require("../middleware/verifyJWT");
+const {
+  validateRegister,
+  validateLogin,
+} = require("../validators/authValidator");
+const handleValidation = require("../middleware/handleValidation");
 
-// no verifyJwt required
-router.post("/register", authController.handleRegister); // POST /api/auth/register
-router.post("/login", authController.handleLogin); // POST /api/auth/login
+// public routes
+router.post(
+  "/register",
+  validateRegister,
+  handleValidation,
+  authController.handleRegister,
+);
+router.post(
+  "/login",
+  validateLogin,
+  handleValidation,
+  authController.handleLogin,
+);
 
-// verifyJwt required
-router.get("/refresh", verifyJWT, authController.handleRefreshToken); // GET  /api/auth/refresh
-router.post("/logout", verifyJWT, authController.handleLogout); // POST /api/auth/logout
+// protected routes
+router.get("/refresh", verifyJWT, authController.handleRefreshToken);
+router.post("/logout", verifyJWT, authController.handleLogout);
 
 module.exports = router;

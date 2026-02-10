@@ -6,12 +6,6 @@ const handleRegister = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "name, email and password are required" });
-    }
-
     const user = await authService.registerUser({ name, email, password });
     res.status(201).json({ message: "User registered", user });
   } catch (error) {
@@ -24,12 +18,6 @@ const handleRegister = async (req, res) => {
 const handleLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
-    }
 
     const { accessToken, refreshToken, user } = await authService.loginUser(
       email,

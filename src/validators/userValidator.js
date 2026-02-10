@@ -2,7 +2,6 @@
 // ใช้ express-validator เพื่อตรวจ input ก่อนเข้า controller
 const { body, param } = require("express-validator");
 
-// ────────── ตรวจ :id param (ใช้ร่วมกันทุก route ที่มี :id) ──────────
 const validateParamId = [
   param("id")
     .isInt({ min: 1 })
@@ -10,7 +9,6 @@ const validateParamId = [
     .toInt(),
 ];
 
-// ────────── POST /api/users — สร้าง user ──────────
 const validateCreateUser = [
   body("name")
     .trim()
@@ -18,7 +16,7 @@ const validateCreateUser = [
     .withMessage("name is required")
     .isLength({ min: 2, max: 100 })
     .withMessage("name must be 2-100 characters")
-    .escape(), // ป้องกัน XSS — แปลง < > & " ' เป็น HTML entities
+    .escape(), // prevent xss 
 
   body("email")
     .trim()

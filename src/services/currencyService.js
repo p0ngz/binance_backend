@@ -16,14 +16,21 @@ const findCurrencyBySymbol = (symbol) => {
   return prisma.currency.findUnique({ where: { symbol } });
 };
 
-// สร้างสกุลเงินใหม่
+// สร้างสกุลเงินใหม่ — whitelist fields
 const createCurrency = (data) => {
-  return prisma.currency.create({ data });
+  const { symbol, name, type, precision } = data;
+  return prisma.currency.create({ data: { symbol, name, type, precision } });
 };
 
-// อัพเดทสกุลเงิน
+// อัพเดทสกุลเงิน — whitelist fields
 const updateCurrency = (id, data) => {
-  return prisma.currency.update({ where: { id }, data });
+  const allowed = {};
+  if (data.symbol !== undefined) allowed.symbol = data.symbol;
+  if (data.name !== undefined) allowed.name = data.name;
+  if (data.type !== undefined) allowed.type = data.type;
+  if (data.precision !== undefined) allowed.precision = data.precision;
+
+  return prisma.currency.update({ where: { id }, data: allowed });
 };
 
 // ลบสกุลเงิน

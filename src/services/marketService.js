@@ -33,9 +33,13 @@ const findActiveMarkets = () => {
   });
 };
 
-// สร้างตลาดใหม่
+// สร้างตลาดใหม่ — whitelist fields
 const createMarket = (data) => {
-  return prisma.market.create({ data });
+  const { baseCurrencyId, quoteCurrencyId, status } = data;
+  return prisma.market.create({
+    data: { baseCurrencyId, quoteCurrencyId, status },
+    include: { baseCurrency: true, quoteCurrency: true },
+  });
 };
 
 // อัพเดทสถานะตลาด (ACTIVE, PAUSED, CLOSED)

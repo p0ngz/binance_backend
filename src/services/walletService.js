@@ -17,9 +17,13 @@ const findWalletByUserAndCurrency = (userId, currencyId) => {
   });
 };
 
-// สร้าง wallet ใหม่ (เมื่อ user เพิ่มสกุลเงินใหม่)
+// สร้าง wallet ใหม่ — whitelist fields
 const createWallet = (data) => {
-  return prisma.wallet.create({ data });
+  const { userId, currencyId } = data;
+  return prisma.wallet.create({
+    data: { userId, currencyId },
+    include: { currency: true },
+  });
 };
 
 // อัพเดทยอดเงิน

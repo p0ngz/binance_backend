@@ -1,12 +1,38 @@
 const express = require("express");
 const router = express.Router();
 const marketController = require("../controllers/marketController");
+const {
+  validateParamId,
+  validateCreateMarket,
+  validateUpdateMarketStatus,
+} = require("../validators/marketValidator");
+const handleValidation = require("../middleware/handleValidation");
 
-router.get("/", marketController.getAllMarkets); // GET    /api/markets
-router.get("/active", marketController.getActiveMarkets); // GET    /api/markets/active
-router.get("/:id", marketController.getMarketById); // GET    /api/markets/:id
-router.post("/", marketController.createMarket); // POST   /api/markets
-router.patch("/:id/status", marketController.updateMarketStatus); // PATCH  /api/markets/:id/status
-router.delete("/:id", marketController.removeMarket); // DELETE /api/markets/:id
+router.get("/", marketController.getAllMarkets);
+router.get("/active", marketController.getActiveMarkets);
+router.get(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  marketController.getMarketById,
+);
+router.post(
+  "/",
+  validateCreateMarket,
+  handleValidation,
+  marketController.createMarket,
+);
+router.patch(
+  "/:id/status",
+  validateUpdateMarketStatus,
+  handleValidation,
+  marketController.updateMarketStatus,
+);
+router.delete(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  marketController.removeMarket,
+);
 
 module.exports = router;

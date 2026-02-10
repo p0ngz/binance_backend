@@ -40,9 +40,17 @@ const findOpenOrdersByMarket = (marketId, side) => {
   });
 };
 
-// สร้าง order ใหม่
+// สร้าง order ใหม่ — whitelist fields
 const createOrder = (data) => {
-  return prisma.order.create({ data });
+  const { userId, marketId, side, type, price, amount, filledType } = data;
+  return prisma.order.create({
+    data: { userId, marketId, side, type, price, amount, filledType },
+    include: {
+      market: {
+        include: { baseCurrency: true, quoteCurrency: true },
+      },
+    },
+  });
 };
 
 // อัพเดท order (เช่น filled_amount, status)

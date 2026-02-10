@@ -1,14 +1,37 @@
 const express = require("express");
 const router = express.Router();
 const exchangeRateController = require("../controllers/exchangeRateController");
+const {
+  validateParamId,
+  validateParamPair,
+  validateUpsertExchangeRate,
+} = require("../validators/exchangeRateValidator");
+const handleValidation = require("../middleware/handleValidation");
 
-router.get("/", exchangeRateController.getAllExchangeRates); // GET    /api/exchange-rates
-router.get("/:id", exchangeRateController.getExchangeRateById); // GET    /api/exchange-rates/:id
+router.get("/", exchangeRateController.getAllExchangeRates);
+router.get(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  exchangeRateController.getExchangeRateById,
+);
 router.get(
   "/pair/:fromCurrencyId/:toCurrencyId",
+  validateParamPair,
+  handleValidation,
   exchangeRateController.getExchangeRateByPair,
-); // GET    /api/exchange-rates/pair/:from/:to
-router.post("/", exchangeRateController.upsertExchangeRate); // POST   /api/exchange-rates
-router.delete("/:id", exchangeRateController.removeExchangeRate); // DELETE /api/exchange-rates/:id
+);
+router.post(
+  "/",
+  validateUpsertExchangeRate,
+  handleValidation,
+  exchangeRateController.upsertExchangeRate,
+);
+router.delete(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  exchangeRateController.removeExchangeRate,
+);
 
 module.exports = router;

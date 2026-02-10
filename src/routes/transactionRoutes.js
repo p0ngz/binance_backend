@@ -1,8 +1,23 @@
 const express = require("express");
 const router = express.Router();
 const transactionController = require("../controllers/transactionController");
+const {
+  validateParamId,
+  validateParamUserId,
+} = require("../validators/transactionValidator");
+const handleValidation = require("../middleware/handleValidation");
 
-router.get("/user/:userId", transactionController.getTransactionsByUserId); // GET /api/transactions/user/:userId
-router.get("/:id", transactionController.getTransactionById); // GET /api/transactions/:id
+router.get(
+  "/user/:userId",
+  validateParamUserId,
+  handleValidation,
+  transactionController.getTransactionsByUserId,
+);
+router.get(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  transactionController.getTransactionById,
+);
 
 module.exports = router;

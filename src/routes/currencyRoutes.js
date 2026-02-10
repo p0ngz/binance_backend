@@ -1,11 +1,37 @@
 const express = require("express");
 const router = express.Router();
 const currencyController = require("../controllers/currencyController");
+const {
+  validateParamId,
+  validateCreateCurrency,
+  validateUpdateCurrency,
+} = require("../validators/currencyValidator");
+const handleValidation = require("../middleware/handleValidation");
 
-router.get("/", currencyController.getAllCurrencies); // GET    /api/currencies
-router.get("/:id", currencyController.getCurrencyById); // GET    /api/currencies/:id
-router.post("/", currencyController.createCurrency); // POST   /api/currencies
-router.put("/:id", currencyController.updateCurrency); // PUT    /api/currencies/:id
-router.delete("/:id", currencyController.removeCurrency); // DELETE /api/currencies/:id
+router.get("/", currencyController.getAllCurrencies);
+router.get(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  currencyController.getCurrencyById,
+);
+router.post(
+  "/",
+  validateCreateCurrency,
+  handleValidation,
+  currencyController.createCurrency,
+);
+router.put(
+  "/:id",
+  validateUpdateCurrency,
+  handleValidation,
+  currencyController.updateCurrency,
+);
+router.delete(
+  "/:id",
+  validateParamId,
+  handleValidation,
+  currencyController.removeCurrency,
+);
 
 module.exports = router;
