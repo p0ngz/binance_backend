@@ -33,8 +33,8 @@ const validateCreateCurrency = [
     .trim()
     .notEmpty()
     .withMessage("type is required")
-    .isIn(["CRYPTO", "FLAT"])
-    .withMessage("type must be CRYPTO or FLAT"),
+    .isIn(["CRYPTO", "FIAT"])
+    .withMessage("type must be CRYPTO or FIAT"),
 
   body("precision")
     .optional()
@@ -65,8 +65,8 @@ const validateUpdateCurrency = [
   body("type")
     .optional()
     .trim()
-    .isIn(["CRYPTO", "FLAT"])
-    .withMessage("type must be CRYPTO or FLAT"),
+    .isIn(["CRYPTO", "FIAT"])
+    .withMessage("type must be CRYPTO or FIAT"),
 
   body("precision")
     .optional()

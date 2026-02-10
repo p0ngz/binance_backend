@@ -64,7 +64,7 @@ model Currency {
 
 enum CurrencyType {
   CRYPTO
-  FLAT
+  FIAT
 }
 
 // ==================== WALLET ====================
