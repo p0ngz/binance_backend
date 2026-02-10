@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER ====================
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String?
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  socialAccounts UserSocialAccount[]
+  wallets        Wallet[]
+  orders         Order[]
+  transactions   Transaction[]
+  refreshTokens  RefreshToken[]
+
+  @@map("users")
+}
+
+// ==================== USER SOCIAL ACCOUNT ====================
+
+model UserSocialAccount {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  provider       String   // google
+  providerUserId String   @map("provider_user_id")
+  email          String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId]) 
+  @@map("user_social_accounts")
+}
+
+// ==================== CURRENCY ====================
+
+model Currency {
+  id        Int    @id @default(autoincrement())
+  symbol    String @unique // BTC, ETH, XRP, DOGE, USD, THB
+  name      String
+  type      CurrencyType
+  precision Int    @default(8)
+
+  wallets            Wallet[]
+  transactions       Transaction[]
+  baseMarkets        Market[]       @relation("BaseCurrency")
+  quoteMarkets       Market[]       @relation("QuoteCurrency")
+  exchangeRatesFrom  ExchangeRate[] @relation("FromCurrency")
+  exchangeRatesTo    ExchangeRate[] @relation("ToCurrency")
+
+  @@map("currencies")
+}
+
+enum CurrencyType {
+  CRYPTO
+  FLAT
+}
+
+// ==================== WALLET ====================
+
+model Wallet {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  currencyId  Int      @map("currency_id")
+  balance     Decimal  @default(0) @db.Decimal(30, 10)
+  lockBalance Decimal  @default(0) @map("lock_balance") @db.Decimal(30, 10)
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id])
+
+  @@unique([userId, currencyId])
+  @@map("wallets")
+}
+
+// ==================== MARKET ====================
+
+model Market {
+  id              Int          @id @default(autoincrement())
+  baseCurrencyId  Int          @map("base_currency_id")
+  quoteCurrencyId Int          @map("quote_currency_id")
+  status          MarketStatus @default(ACTIVE)
+
+  baseCurrency  Currency @relation("BaseCurrency", fields: [baseCurrencyId], references: [id])
+  quoteCurrency Currency @relation("QuoteCurrency", fields: [quoteCurrencyId], references: [id])
+  orders        Order[]
+
+  @@unique([baseCurrencyId, quoteCurrencyId])
+  @@map("markets")
+}
+
+enum MarketStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+}
+
+// ==================== ORDER ====================
+
+model Order {
+  id           Int             @id @default(autoincrement())
+  userId       Int             @map("user_id")
+  marketId     Int             @map("market_id")
+  side         OrderSide
+  filledType   OrderFilledType @default(SINGLE) @map("filled_type")
+  type         OrderType
+  price        Decimal         @db.Decimal(30, 10)
+  amount       Decimal         @db.Decimal(30, 10)
+  filledAmount Decimal         @default(0) @map("filled_amount") @db.Decimal(30, 10)
+  status       OrderStatus     @default(OPEN)
+  createdAt    DateTime        @default(now()) @map("created_at")
+
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  market     Market  @relation(fields: [marketId], references: [id])
+  buyTrades  Trade[] @relation("BuyOrder")
+  sellTrades Trade[] @relation("SellOrder")
+
+  @@map("orders")
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderFilledType {
+  SINGLE
+  MULTIPLE
+}
+
+enum OrderType {
+  LIMIT
+  MARKET
+}
+
+enum OrderStatus {
+  OPEN
+  FILLED
+  CANCELLED
+}
+
+// ==================== TRADE ====================
+
+model Trade {
+  id          Int      @id @default(autoincrement())
+  buyOrderId  Int      @map("buy_order_id")
+  sellOrderId Int      @map("sell_order_id")
+  price       Decimal  @db.Decimal(30, 10)
+  amount      Decimal  @db.Decimal(30, 10)
+  fee         Decimal  @default(0) @db.Decimal(30, 10)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  buyOrder  Order @relation("BuyOrder", fields: [buyOrderId], references: [id])
+  sellOrder Order @relation("SellOrder", fields: [sellOrderId], references: [id])
+
+  @@map("trades")
+}
+
+// ==================== TRANSACTION ====================
+
+model Transaction {
+  id           Int                  @id @default(autoincrement())
+  userId       Int                  @map("user_id")
+  currencyId   Int                  @map("currency_id")
+  amount       Decimal              @db.Decimal(30, 10)
+  balanceAfter Decimal              @map("balance_after") @db.Decimal(30, 10)
+  type         TransactionType
+  direction    TransactionDirection
+  refType      TransactionRefType   @map("ref_type")
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [currencyId], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  TRADE
+  EXCHANGE
+  DEPOSIT
+  BONUS
+}
+
+enum TransactionDirection {
+  IN
+  OUT
+}
+
+enum TransactionRefType {
+  ORDER
+  TRADE
+}
+
+// ==================== EXCHANGE RATE ====================
+
+model ExchangeRate {
+  id             Int      @id @default(autoincrement())
+  fromCurrencyId Int      @map("from_currency_id")
+  toCurrencyId   Int      @map("to_currency_id")
+  rate           Decimal  @db.Decimal(30, 10)
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  fromCurrency Currency @relation("FromCurrency", fields: [fromCurrencyId], references: [id])
+  toCurrency   Currency @relation("ToCurrency", fields: [toCurrencyId], references: [id])
+
+  @@unique([fromCurrencyId, toCurrencyId])
+  @@map("exchange_rates")
+}
+
+// ==================== REFRESH TOKEN ====================
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiredAt DateTime @map("expired_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("refresh_tokens")
+}

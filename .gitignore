@@ -41,3 +41,5 @@ coverage/
 *.seed
 *.pid.lock
 package-lock.json
+
+/src/generated/prisma

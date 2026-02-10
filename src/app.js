@@ -1,26 +1,28 @@
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan");
-
+const corsOption = require("./config/corsOption");
+const credentials = require("./middleware/credentials");
+const setupLogger = require("./middleware/logger");
+const cookieParser = require("cookie-parser");
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(morgan("dev"));
+app.use(credentials);
+app.use(cors(corsOption));
+setupLogger(app);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// Routes
 app.get("/", (req, res) => {
-  res.json({ message: "Binance Backend API is running" });
+  res.json({ message: "Binance Backend Server is running" });
 });
 
-// Health check
-app.get("/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+app.get("/hello", (req, res) => {
+  res.send(`Hello, ${req.query.person}!`);
 });
 
-// TODO: Add your routes here
-// app.use('/api', require('./routes'));
+const routes = require("./routes");
+app.use("/api", routes);
 
 module.exports = app;
