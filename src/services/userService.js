@@ -38,25 +38,6 @@ const findUserByEmail = (email) => {
   return prisma.user.findUnique({ where: { email } });
 };
 
-// create new user — whitelist fields + hash password
-const createUser = async (data) => {
-  const { name, email, password, avatarUrl } = data; // รับเฉพาะ field ที่อนุญาต
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  return prisma.user.create({
-    data: { name, email, password: hashedPassword, avatarUrl },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      avatarUrl: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-};
-
 // update user — whitelist fields + hash password ถ้ามี
 const updateUser = async (id, data) => {
   const allowed = {};
@@ -91,7 +72,6 @@ module.exports = {
   findAllUsers,
   findUserById,
   findUserByEmail,
-  createUser,
   updateUser,
   removeUser,
 };

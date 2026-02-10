@@ -3,7 +3,6 @@ const router = express.Router();
 const userController = require("../controllers/userController");
 const {
   validateParamId,
-  validateCreateUser,
   validateUpdateUser,
 } = require("../validators/userValidator");
 const handleValidation = require("../middleware/handleValidation");
@@ -15,12 +14,6 @@ router.get(
   handleValidation,
   userController.getUserById,
 ); // GET    /api/users/:id
-router.post(
-  "/",
-  validateCreateUser,
-  handleValidation,
-  userController.createUser,
-); // POST   /api/users
 router.put(
   "/:id",
   validateUpdateUser,
