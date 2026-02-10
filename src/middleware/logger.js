@@ -9,18 +9,23 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// fileName
+// แปลงเวลาเป็น Thailand (GMT+7)
+const toThaiDate = () => {
+  return new Date(Date.now() + 7 * 60 * 60 * 1000);
+};
+
+// fileName (ใช้เวลาไทย)
 const getLogFileName = () => {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = String(now.getMonth() + 1).padStart(2, "0");
-  const d = String(now.getDate()).padStart(2, "0");
+  const now = toThaiDate();
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(now.getUTCDate()).padStart(2, "0");
   return `access-${y}-${m}-${d}.log`;
 };
 
-// customize token morgan
+// customize token morgan (ใช้เวลาไทย)
 morgan.token("datetime", () => {
-  const now = new Date();
+  const now = toThaiDate();
   return now.toISOString().replace("T", " ").substring(0, 19);
 });
 
