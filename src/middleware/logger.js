@@ -9,12 +9,12 @@ if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir, { recursive: true });
 }
 
-// แปลงเวลาเป็น Thailand (GMT+7)
+// convert to thai date (UTC+7)
 const toThaiDate = () => {
   return new Date(Date.now() + 7 * 60 * 60 * 1000);
 };
 
-// fileName (ใช้เวลาไทย)
+// fileName
 const getLogFileName = () => {
   const now = toThaiDate();
   const y = now.getUTCFullYear();
@@ -23,7 +23,7 @@ const getLogFileName = () => {
   return `access-${y}-${m}-${d}.log`;
 };
 
-// customize token morgan (ใช้เวลาไทย)
+// customize token morgan
 morgan.token("datetime", () => {
   const now = toThaiDate();
   return now.toISOString().replace("T", " ").substring(0, 19);

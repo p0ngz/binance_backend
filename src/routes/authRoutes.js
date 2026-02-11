@@ -23,7 +23,8 @@ router.post(
 );
 
 // protected routes
-router.get("/refresh", verifyJWT, authController.handleRefreshToken);
+router.get("/refresh", authController.handleRefreshToken);
 router.post("/logout", verifyJWT, authController.handleLogout);
+router.post("/logout-all", verifyJWT, authController.handleLogoutAll);
 
 module.exports = router;

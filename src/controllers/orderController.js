@@ -24,21 +24,43 @@ const getOrderById = async (req, res) => {
 
 const createOrder = async (req, res) => {
   try {
-    const order = await orderService.createOrder(req.body);
+    const { marketId, side, type, price, amount, filledType } = req.body;
+    const userId = req.body.userId || req.userId;
+    const order = await orderService.createOrder({
+      userId,
+      marketId,
+      side,
+      type,
+      price,
+      amount,
+      filledType,
+    });
     res.status(201).json(order);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
   }
 };
 
 const cancelOrder = async (req, res) => {
   try {
-    const order = await orderService.cancelOrder(Number(req.params.id));
-    res.json(order);
+    const userId = req.body.userId || req.userId || null;
+    const order = await orderService.cancelOrder(Number(req.params.id), userId);
+    res.json({ message: "Order cancelled", order });
   } catch (error) {
-    if (error.code === "P2025") {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
+  }
+};
+
+// GET /api/orders/market/:marketId/book — แสดง order book
+const getOrderBook = async (req, res) => {
+  try {
+    const book = await orderService.findOrderBookByMarket(
+      Number(req.params.marketId),
+    );
+    res.json(book);
+  } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
@@ -48,4 +70,5 @@ module.exports = {
   getOrderById,
   createOrder,
   cancelOrder,
+  getOrderBook,
 };

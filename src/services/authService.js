@@ -12,7 +12,7 @@ if (!ACCESS_TOKEN_SECRET || !REFRESH_TOKEN_SECRET) {
   );
 }
 
-// ────────── Register ──────────
+// ────────── Register — สร้าง user + wallet ทุกสกุลเงิน ──────────
 const registerUser = async ({ name, email, password }) => {
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -23,16 +23,40 @@ const registerUser = async ({ name, email, password }) => {
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  const user = await prisma.user.create({
-    data: { name, email, password: hashedPassword },
-    select: { id: true, name: true, email: true, createdAt: true },
+  // ใช้ transaction ครอบ user + wallet
+  const user = await prisma.$transaction(async (tx) => {
+    const newUser = await tx.user.create({
+      data: { name, email, password: hashedPassword },
+    });
+
+    // สร้าง wallet ทุกสกุลเงินที่มีอยู่ในระบบ
+    const currencies = await tx.currency.findMany();
+    if (currencies.length > 0) {
+      await tx.wallet.createMany({
+        data: currencies.map((c) => ({
+          userId: newUser.id,
+          currencyId: c.id,
+        })),
+      });
+    }
+
+    return tx.user.findUnique({
+      where: { id: newUser.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        wallets: { include: { currency: true } },
+      },
+    });
   });
 
   return user;
 };
 
-// ────────── Login ──────────
-const loginUser = async (email, password) => {
+// ────────── Login — พร้อมบันทึก IP / User-Agent ──────────
+const loginUser = async (email, password, { ip, userAgent } = {}) => {
   // หา user จาก email
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) {
@@ -49,30 +73,34 @@ const loginUser = async (email, password) => {
     throw err;
   }
 
-  const accessToken = jwt.sign(
-    {
-      UserInfo: {
-        userId: user.id,
-        email: user.email,
-      },
-    },
-    ACCESS_TOKEN_SECRET,
-    { expiresIn: "15m" }, //accessToken expire in 15 min
-  );
-
   //   refreshToken expire in 7 days
   const refreshToken = jwt.sign({ userId: user.id }, REFRESH_TOKEN_SECRET, {
     expiresIn: "7d",
   });
 
   const expiredInMs = 7 * 24 * 60 * 60 * 1000; // 7 วัน
-  await prisma.refreshToken.create({
+  const refreshTokenRecord = await prisma.refreshToken.create({
     data: {
       userId: user.id,
       token: refreshToken,
+      ip: ip || null,
+      userAgent: userAgent || null,
       expiredAt: new Date(Date.now() + expiredInMs),
     },
   });
+
+  // สร้าง accessToken พร้อมฝัง sessionId เพื่อผูกกับ session
+  const accessToken = jwt.sign(
+    {
+      UserInfo: {
+        userId: user.id,
+        email: user.email,
+        sessionId: refreshTokenRecord.id,
+      },
+    },
+    ACCESS_TOKEN_SECRET,
+    { expiresIn: "15m" },
+  );
 
   return {
     accessToken,
@@ -116,12 +144,13 @@ const refreshAccessToken = async (refreshToken) => {
         return reject(error);
       }
 
-      // สร้าง access token ใหม่
+      // สร้าง access token ใหม่ พร้อมฝัง sessionId
       const accessToken = jwt.sign(
         {
           UserInfo: {
             userId: decoded.userId,
             email: storedToken.user.email,
+            sessionId: storedToken.id,
           },
         },
         ACCESS_TOKEN_SECRET,

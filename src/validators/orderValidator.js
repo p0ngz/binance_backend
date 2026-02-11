@@ -42,6 +42,7 @@ const validateCreateOrder = [
     .withMessage("type must be LIMIT or MARKET"),
 
   body("price")
+    .optional()
     .isDecimal({ decimal_digits: "0,10" })
     .withMessage("price must be a valid decimal number")
     .custom((val) => parseFloat(val) > 0)

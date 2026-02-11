@@ -39,8 +39,56 @@ const createWallet = async (req, res) => {
   }
 };
 
+// ────────── POST /api/wallets/create-all/:userId — สร้าง wallet ทุกสกุลเงินให้ user ──────────
+const createAllWallets = async (req, res) => {
+  try {
+    const result = await walletService.createAllWalletsForUser(
+      Number(req.params.userId),
+    );
+    res.status(201).json({ message: `Created ${result.count} wallet(s)` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ────────── POST /api/wallets/transfer — โอนเงินภายใน ──────────
+const handleTransfer = async (req, res) => {
+  try {
+    const { senderId, receiverId, currencyId, amount } = req.body;
+    const result = await walletService.internalTransfer(
+      senderId,
+      receiverId,
+      currencyId,
+      parseFloat(amount),
+    );
+    res.json({ message: "Transfer successful", ...result });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
+  }
+};
+
+// ────────── POST /api/wallets/deposit — เติมเงิน (สำหรับทดสอบ) ──────────
+const handleDeposit = async (req, res) => {
+  try {
+    const { userId, currencyId, amount } = req.body;
+    const result = await walletService.depositToWallet(
+      userId,
+      currencyId,
+      parseFloat(amount),
+    );
+    res.json({ message: "Deposit successful", ...result });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getWalletsByUserId,
   getWalletByUserAndCurrency,
   createWallet,
+  createAllWallets,
+  handleTransfer,
+  handleDeposit,
 };

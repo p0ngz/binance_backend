@@ -2,6 +2,11 @@ generator client {
   provider = "prisma-client-js"
 }
 
+generator erd {
+  provider = "prisma-erd-generator"
+  output   = "./erd.svg"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -32,32 +37,32 @@ model User {
 model UserSocialAccount {
   id             Int      @id @default(autoincrement())
   userId         Int      @map("user_id")
-  provider       String   // google
+  provider       String // google
   providerUserId String   @map("provider_user_id")
   email          String
   createdAt      DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerUserId]) 
+  @@unique([provider, providerUserId])
   @@map("user_social_accounts")
 }
 
 // ==================== CURRENCY ====================
 
 model Currency {
-  id        Int    @id @default(autoincrement())
-  symbol    String @unique // BTC, ETH, XRP, DOGE, USD, THB
+  id        Int          @id @default(autoincrement())
+  symbol    String       @unique // BTC, ETH, XRP, DOGE, USD, THB
   name      String
   type      CurrencyType
-  precision Int    @default(8)
+  precision Int          @default(8)
 
-  wallets            Wallet[]
-  transactions       Transaction[]
-  baseMarkets        Market[]       @relation("BaseCurrency")
-  quoteMarkets       Market[]       @relation("QuoteCurrency")
-  exchangeRatesFrom  ExchangeRate[] @relation("FromCurrency")
-  exchangeRatesTo    ExchangeRate[] @relation("ToCurrency")
+  wallets           Wallet[]
+  transactions      Transaction[]
+  baseMarkets       Market[]       @relation("BaseCurrency")
+  quoteMarkets      Market[]       @relation("QuoteCurrency")
+  exchangeRatesFrom ExchangeRate[] @relation("FromCurrency")
+  exchangeRatesTo   ExchangeRate[] @relation("ToCurrency")
 
   @@map("currencies")
 }
@@ -178,6 +183,7 @@ model Transaction {
   type         TransactionType
   direction    TransactionDirection
   refType      TransactionRefType   @map("ref_type")
+  refId        Int?                 @map("ref_id")
   createdAt    DateTime             @default(now()) @map("created_at")
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -191,6 +197,7 @@ enum TransactionType {
   EXCHANGE
   DEPOSIT
   BONUS
+  TRANSFER
 }
 
 enum TransactionDirection {
@@ -201,6 +208,9 @@ enum TransactionDirection {
 enum TransactionRefType {
   ORDER
   TRADE
+  EXCHANGE
+  TRANSFER
+  DEPOSIT
 }
 
 // ==================== EXCHANGE RATE ====================
@@ -222,10 +232,13 @@ model ExchangeRate {
 // ==================== REFRESH TOKEN ====================
 
 model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  token     String   @unique
-  expiredAt DateTime @map("expired_at")
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  token      String   @unique
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  expiredAt  DateTime @map("expired_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

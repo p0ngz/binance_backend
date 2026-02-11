@@ -35,15 +35,37 @@ const findExchangeRateByPair = (fromCurrencyId, toCurrencyId) => {
   });
 };
 
-// สร้างหรืออัพเดทอัตราแลกเปลี่ยน (upsert)
-const upsertExchangeRate = (fromCurrencyId, toCurrencyId, rate) => {
-  return prisma.exchangeRate.upsert({
-    where: {
-      fromCurrencyId_toCurrencyId: { fromCurrencyId, toCurrencyId },
-    },
-    update: { rate },
-    create: { fromCurrencyId, toCurrencyId, rate },
-  });
+// สร้างหรืออัพเดทอัตราแลกเปลี่ยน (upsert) — อัปเดตทั้ง 2 ทิศทางอัตโนมัติ
+const upsertExchangeRate = async (fromCurrencyId, toCurrencyId, rate) => {
+  const inverseRate = 1 / rate;
+
+  const [forward, reverse] = await prisma.$transaction([
+    // ทิศทางปกติ เช่น BTC→THB = 3,400,000
+    prisma.exchangeRate.upsert({
+      where: {
+        fromCurrencyId_toCurrencyId: { fromCurrencyId, toCurrencyId },
+      },
+      update: { rate },
+      create: { fromCurrencyId, toCurrencyId, rate },
+    }),
+    // ทิศทางกลับ เช่น THB→BTC = 1/3,400,000
+    prisma.exchangeRate.upsert({
+      where: {
+        fromCurrencyId_toCurrencyId: {
+          fromCurrencyId: toCurrencyId,
+          toCurrencyId: fromCurrencyId,
+        },
+      },
+      update: { rate: inverseRate },
+      create: {
+        fromCurrencyId: toCurrencyId,
+        toCurrencyId: fromCurrencyId,
+        rate: inverseRate,
+      },
+    }),
+  ]);
+
+  return { forward, reverse };
 };
 
 // ลบอัตราแลกเปลี่ยน

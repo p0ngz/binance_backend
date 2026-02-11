@@ -14,6 +14,7 @@ router.get(
   handleValidation,
   orderController.getOrdersByUserId,
 );
+router.get("/market/:marketId/book", orderController.getOrderBook);
 router.get(
   "/:id",
   validateParamId,

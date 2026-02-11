@@ -1,5 +1,6 @@
 // verifyJWT middleware
 const jwt = require("jsonwebtoken");
+const prisma = require("../config/db");
 
 const verifyJWT = (req, res, next) => {
   // อ่าน header Authorization: Bearer <token>
@@ -10,12 +11,43 @@ const verifyJWT = (req, res, next) => {
   }
 
   const token = authHeader.split(" ")[1];
-
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+  console.log("token: ", token);
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: "Forbidden — invalid token" });
     }
 
+    // ตรวจว่า session (ตาม sessionId ที่ฝังใน token) ยังอยู่ใน DB
+    const sessionId = decoded.UserInfo.sessionId;
+    console.log("sessionId: ", sessionId);
+    if (sessionId) {
+      const activeSession = await prisma.refreshToken.findUnique({
+        where: { id: sessionId },
+      });
+
+      console.log("activeSession: ", activeSession);
+      if (!activeSession) {
+        return res
+          .status(403)
+          .json({ message: "Forbidden — session expired, please login again" });
+      }
+    } else {
+      // token เก่าที่ไม่มี sessionId → fallback เช็คตาม userId
+      const activeSession = await prisma.refreshToken.findFirst({
+        where: {
+          userId: decoded.UserInfo.userId,
+          expiredAt: { gt: new Date() },
+        },
+      });
+
+      if (!activeSession) {
+        return res
+          .status(403)
+          .json({ message: "Forbidden — session expired, please login again" });
+      }
+    }
+
+    console.log("verified => Decoded JWT:", decoded);
     // แนบข้อมูล user เข้า req เพื่อให้ controller ถัดไปใช้ได้
     req.userId = decoded.UserInfo.userId;
     req.email = decoded.UserInfo.email;

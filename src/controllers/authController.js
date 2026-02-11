@@ -19,9 +19,14 @@ const handleLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    // เก็บ IP + User-Agent สำหรับ device tracking
+    const ip = req.ip || req.connection?.remoteAddress || null;
+    const userAgent = req.headers["user-agent"] || null;
+
     const { accessToken, refreshToken, user } = await authService.loginUser(
       email,
       password,
+      { ip, userAgent },
     );
 
     // ส่ง refresh token เป็น httpOnly cookie (ป้องกัน XSS)
@@ -57,19 +62,17 @@ const handleRefreshToken = async (req, res) => {
   }
 };
 
-// ────────── POST /api/auth/logout ──────────
+// ────────── POST /api/auth/logout (1 device — ใช้ cookie) ──────────
 const handleLogout = async (req, res) => {
   try {
     const cookies = req.cookies;
 
     if (!cookies?.jwt) {
-      // ไม่มี cookie ก็ถือว่า logout สำเร็จอยู่แล้ว
-      return res.sendStatus(204);
+      return res.sendStatus(204); // ไม่มี cookie = logout อยู่แล้ว
     }
 
     await authService.logoutUser(cookies.jwt);
 
-    // ลบ cookie ออกจาก browser
     res.clearCookie("jwt", {
       httpOnly: true,
       sameSite: "None",
@@ -82,9 +85,28 @@ const handleLogout = async (req, res) => {
   }
 };
 
+// ────────── POST /api/auth/logout-all (ทุก device — ใช้ access token) ──────────
+const handleLogoutAll = async (req, res) => {
+  try {
+    const count = await authService.logoutAllDevices(req.userId);
+
+    // ลบ cookie ด้วย (ถ้ามี)
+    res.clearCookie("jwt", {
+      httpOnly: true,
+      sameSite: "None",
+      secure: false,
+    });
+
+    res.json({ message: `Logged out from ${count} device(s)` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   handleRegister,
   handleLogin,
   handleRefreshToken,
   handleLogout,
+  handleLogoutAll,
 };
