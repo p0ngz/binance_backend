@@ -15,6 +15,7 @@
 6.  [API Endpoints ทั้งหมด](#api-endpoints-ทั้งหมด)
 7.  [Flow การทำงานหลัก](#flow-การทำงานหลัก)
 8.  [ข้อมูล Seed (Mock Data)](#ข้อมูล-seed-mock-data)
+9.  [Swagger UI — API Documentation](#swagger-ui--api-documentation)
 
 ---
 
@@ -78,9 +79,12 @@ npx prisma db seed
 ```
 
 จะสร้างข้อมูล:
+- 3 ผู้ใช้ (Alice, Bob, Charlie — password: `password123`)
 - 6 สกุลเงิน (BTC, ETH, XRP, DOGE, USD, THB)
+- 18 wallets พร้อมยอดเงินเริ่มต้น
 - 9 คู่ตลาดเทรด (BTC/THB, ETH/THB, BTC/USD ฯลฯ)
 - 18 อัตราแลกเปลี่ยน (ทั้งสองทิศทาง)
+- 13 transaction records (บันทึกการฝากเงินเริ่มต้น)
 
 ### 6. รันเซิร์ฟเวอร์
 
@@ -93,6 +97,21 @@ npm start
 ```
 
 เซิร์ฟเวอร์จะรันที่ `http://localhost:3000`
+
+### 7. เปิด API Documentation (Swagger UI)
+
+หลังรัน server แล้ว เปิด browser ไปที่:
+
+```
+http://localhost:3000/api-docs
+```
+
+จะเห็นหน้า **Swagger UI** แสดง API ทั้งหมดของระบบ สามารถ:
+- ดู endpoint ทั้งหมดแยกตาม tag (auth, user, wallet, currency, market, order, trade, transaction, exchange-rate, swap)
+- ดู request body ตัวอย่างของแต่ละ endpoint
+- ทดลองยิง API ได้โดยตรงจากหน้าเว็บ (กด "Try it out")
+
+> ไฟล์ spec อยู่ที่ `Binance_api_collection.yaml` ใน root ของโปรเจค
 
 ---
 

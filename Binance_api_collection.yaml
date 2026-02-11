@@ -1,0 +1,813 @@
+openapi: 3.0.0
+info:
+  title: Binance_api_collection
+  version: 1.0.0
+paths:
+  /api/auth/register:
+    post:
+      summary: registerUser
+      operationId: registerUser
+      description: ''
+      tags:
+        - auth
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/registeruser'
+  /api/auth/login:
+    post:
+      summary: login
+      operationId: login
+      description: ''
+      tags:
+        - auth
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/login'
+  /api/auth/refresh:
+    get:
+      summary: refresh
+      operationId: refresh
+      description: ''
+      tags:
+        - auth
+      responses:
+        '200':
+          description: ''
+  /api/auth/logout:
+    post:
+      summary: logout (1 device)
+      operationId: logout (1 device)
+      description: ''
+      tags:
+        - auth
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: Authorization
+          in: header
+          description: ''
+          required: true
+          example: >-
+            Bearer
+            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySW5mbyI6eyJ1c2VySWQiOjQsImVtYWlsIjoicG9uZ3NhdG9ybm5lYUBnbWFpbC5jb20iLCJzZXNzaW9uSWQiOjE0fSwiaWF0IjoxNzcwODA3OTUxLCJleHAiOjE3NzA4MDg4NTF9.fhsmL6-MWLGza5VZPprEn3lmAECV-hAxdbHEifC_ESE
+        - name: ''
+          in: header
+          description: ''
+          required: true
+          example: >-
+            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySW5mbyI6eyJ1c2VySWQiOjQsImVtYWlsIjoicG9uZ3NhdG9ybm5lYUBnbWFpbC5jb20ifSwiaWF0IjoxNzcwODA3MjQ0LCJleHAiOjE3NzA4MDgxNDR9.lRfDQHmSMapny6zZFERqvixNiQVBtHOh6oEf_mkBQS4
+  /api/auth/logout-all:
+    post:
+      summary: logout (all device)
+      operationId: logout (all device)
+      description: ''
+      tags:
+        - auth
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: Authorization
+          in: header
+          description: ''
+          required: true
+          example: Bearer {{accessToken}}
+  /api/users:
+    get:
+      summary: getAllUsers
+      operationId: getAllUsers
+      description: ''
+      tags:
+        - user
+      responses:
+        '200':
+          description: ''
+  /api/users/:id:
+    get:
+      summary: getUserById
+      operationId: getUserById
+      description: ''
+      tags:
+        - user
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '4'
+    put:
+      summary: updateUserById
+      operationId: updateUserById
+      description: ''
+      tags:
+        - user
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '4'
+      requestBody:
+        $ref: '#/components/requestBodies/updateuserbyid'
+    delete:
+      summary: deleteUserById
+      operationId: deleteUserById
+      description: ''
+      tags:
+        - user
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '6'
+  /api/currencies:
+    get:
+      summary: getAllCurrencies
+      operationId: getAllCurrencies
+      description: ''
+      tags:
+        - currency
+      responses:
+        '200':
+          description: ''
+    post:
+      summary: createNewCurrency
+      operationId: createNewCurrency
+      description: ''
+      tags:
+        - currency
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/createnewcurrency'
+  /api/currencies/:id:
+    get:
+      summary: getCurrencyById
+      operationId: getCurrencyById
+      description: ''
+      tags:
+        - currency
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '1'
+    put:
+      summary: updateCurrencyById
+      operationId: updateCurrencyById
+      description: ''
+      tags:
+        - currency
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '16'
+      requestBody:
+        $ref: '#/components/requestBodies/updatecurrencybyid'
+    delete:
+      summary: deleteCurrencyById
+      operationId: deleteCurrencyById
+      description: ''
+      tags:
+        - currency
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '16'
+  /api/markets:
+    get:
+      summary: getAllMarkets
+      operationId: getAllMarkets
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+  /api/markets/active:
+    get:
+      summary: getActiveMarkets
+      operationId: getActiveMarkets
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+  /api/markets/:id:
+    get:
+      summary: getMarketById
+      operationId: getMarketById
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '3'
+    delete:
+      summary: deleteMarketPairById
+      operationId: deleteMarketPairById
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '11'
+  /api/markets/:
+    post:
+      summary: createNewMarket
+      operationId: createNewMarket
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/createnewmarket'
+  /api/markets/:id/status:
+    patch:
+      summary: updateMarketStatusById
+      operationId: updateMarketStatusById
+      description: ''
+      tags:
+        - market
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '11'
+      requestBody:
+        $ref: '#/components/requestBodies/updatemarketstatusbyid'
+  /api/wallets/user/:userId:
+    get:
+      summary: getWalletsByUserId (wallets for each user)
+      operationId: getWalletsByUserId (wallets for each user)
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '7'
+  /api/wallets/user/:userId/currency/:currencyId:
+    get:
+      summary: getWalletBy UserId And CurrencyId
+      operationId: getWalletBy UserId And CurrencyId
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: currencyId
+          in: query
+          description: ''
+          required: true
+          example: '1'
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '7'
+  /api/wallets/:
+    post:
+      summary: createNewWallet
+      operationId: createNewWallet
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/createnewwallet'
+  /api/wallets/transfer:
+    post:
+      summary: internal transferWallet (user to user)
+      operationId: internal transferWallet (user to user)
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/internal_transferwallet_(user_to_user)'
+  /api/wallets/deposit:
+    post:
+      summary: updateWalletBalanceBy (deposit)
+      operationId: updateWalletBalanceBy (deposit)
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/updatewalletbalanceby_(deposit)'
+  /api/wallets/create-all/:userId:
+    post:
+      summary: createAllWalletByUserId
+      operationId: createAllWalletByUserId
+      description: ''
+      tags:
+        - wallet
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '4'
+  /api/orders/user/:userId:
+    get:
+      summary: getOrderByUserId
+      operationId: getOrderByUserId
+      description: ''
+      tags:
+        - order
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '8'
+  /api/orders/market/:marketId/book:
+    get:
+      summary: getOrderBook (ดึง Bids, asks ของตลาด)
+      operationId: getOrderBook (ดึง Bids, asks ของตลาด)
+      description: ''
+      tags:
+        - order
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: marketId
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/orders/:id:
+    get:
+      summary: getOrderByOrderId
+      operationId: getOrderByOrderId
+      description: ''
+      tags:
+        - order
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/orders:
+    post:
+      summary: createNewOrder
+      operationId: createNewOrder
+      description: ''
+      tags:
+        - order
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/createneworder'
+  /api/orders/:id/cancel:
+    patch:
+      summary: cancelOrder
+      operationId: cancelOrder
+      description: ''
+      tags:
+        - order
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '8'
+      requestBody:
+        $ref: '#/components/requestBodies/cancelorder'
+  /api/trades/market/:marketId:
+    get:
+      summary: getTradesByMarketId
+      operationId: getTradesByMarketId
+      description: ''
+      tags:
+        - trade
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: marketId
+          in: query
+          description: ''
+          required: true
+          example: '1'
+  /api/trades/:userId:
+    get:
+      summary: getTradeByUserId
+      operationId: getTradeByUserId
+      description: ''
+      tags:
+        - trade
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '4'
+  /api/trades/:id:
+    get:
+      summary: getTradeById
+      operationId: getTradeById
+      description: ''
+      tags:
+        - trade
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '4'
+  /api/transactions/user/:userId:
+    get:
+      summary: getTransactionsByUserId
+      operationId: getTransactionsByUserId
+      description: ''
+      tags:
+        - transaction
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: userId
+          in: query
+          description: ''
+          required: true
+          example: '4'
+  /api/transactions/:id:
+    get:
+      summary: getTransactionById
+      operationId: getTransactionById
+      description: ''
+      tags:
+        - transaction
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '16'
+  /api/exchange-rates:
+    get:
+      summary: getAllExchangeRates
+      operationId: getAllExchangeRates
+      description: ''
+      tags:
+        - exchange rate
+      responses:
+        '200':
+          description: ''
+  /api/exchange-rates/:id:
+    get:
+      summary: getExchangeRateById
+      operationId: getExchangeRateById
+      description: ''
+      tags:
+        - exchange rate
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: '18'
+    delete:
+      summary: deleteExchangeRate
+      operationId: deleteExchangeRate
+      description: ''
+      tags:
+        - exchange rate
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: query
+          description: ''
+          required: true
+          example: ''
+  /api/exchange-rates/pair/:fromCurrencyId/:toCurrencyId:
+    get:
+      summary: getExchangeRateByPair
+      operationId: getExchangeRateByPair
+      description: ''
+      tags:
+        - exchange rate
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: fromCurrencyId
+          in: query
+          description: ''
+          required: true
+          example: '15'
+        - name: toCurrencyId
+          in: query
+          description: ''
+          required: true
+          example: '4'
+  /api/exchange-rates/:
+    post:
+      summary: create or update exchange rates
+      operationId: create or update exchange rates
+      description: ''
+      tags:
+        - exchange rate
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/create_or_update_exchange_rates'
+  /api/exchange:
+    post:
+      summary: exchangeWithMarket
+      operationId: exchangeWithMarket
+      description: ''
+      tags:
+        - exchange (user + market)
+      responses:
+        '200':
+          description: ''
+      requestBody:
+        $ref: '#/components/requestBodies/exchangewithmarket'
+servers: []
+components:
+  schemas:
+    registeruser:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+    login:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+    updateuserbyid:
+      type: object
+      properties: {}
+    createnewcurrency:
+      type: object
+      properties:
+        symbol:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        precision:
+          type: number
+    updatecurrencybyid:
+      type: object
+      properties: {}
+    createnewmarket:
+      type: object
+      properties: {}
+    updatemarketstatusbyid:
+      type: object
+      properties: {}
+    createnewwallet:
+      type: object
+      properties: {}
+    internal_transferwallet_(user_to_user):
+      type: object
+      properties:
+        senderId:
+          type: number
+        receiverId:
+          type: number
+        currencyId:
+          type: number
+        amount:
+          type: number
+    updatewalletbalanceby_(deposit):
+      type: object
+      properties:
+        userId:
+          type: number
+        currencyId:
+          type: number
+        amount:
+          type: number
+    createneworder:
+      type: object
+      properties: {}
+    cancelorder:
+      type: object
+      properties:
+        userId:
+          type: number
+    create_or_update_exchange_rates:
+      type: object
+      properties:
+        fromCurrencyId:
+          type: number
+        toCurrencyId:
+          type: number
+        rate:
+          type: number
+    exchangewithmarket:
+      type: object
+      properties:
+        userId:
+          type: number
+        fromCurrencyId:
+          type: number
+        toCurrencyId:
+          type: number
+        amount:
+          type: number
+  requestBodies:
+    registeruser:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/registeruser'
+      description: ''
+      required: true
+    login:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/login'
+      description: ''
+      required: true
+    updateuserbyid:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/updateuserbyid'
+      description: ''
+      required: true
+    createnewcurrency:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/createnewcurrency'
+      description: ''
+      required: true
+    updatecurrencybyid:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/updatecurrencybyid'
+      description: ''
+      required: true
+    createnewmarket:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/createnewmarket'
+      description: ''
+      required: true
+    updatemarketstatusbyid:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/updatemarketstatusbyid'
+      description: ''
+      required: true
+    createnewwallet:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/createnewwallet'
+      description: ''
+      required: true
+    internal_transferwallet_(user_to_user):
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/internal_transferwallet_(user_to_user)'
+      description: ''
+      required: true
+    updatewalletbalanceby_(deposit):
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/updatewalletbalanceby_(deposit)'
+      description: ''
+      required: true
+    createneworder:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/createneworder'
+      description: ''
+      required: true
+    cancelorder:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/cancelorder'
+      description: ''
+      required: true
+    create_or_update_exchange_rates:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/create_or_update_exchange_rates'
+      description: ''
+      required: true
+    exchangewithmarket:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/exchangewithmarket'
+      description: ''
+      required: true
+  securitySchemes: {}
