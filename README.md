@@ -15,7 +15,6 @@
 6.  [API Endpoints ทั้งหมด](#api-endpoints-ทั้งหมด)
 7.  [Flow การทำงานหลัก](#flow-การทำงานหลัก)
 8.  [ข้อมูล Seed (Mock Data)](#ข้อมูล-seed-mock-data)
-9.  [Swagger UI — API Documentation](#swagger-ui--api-documentation)
 
 ---
 
