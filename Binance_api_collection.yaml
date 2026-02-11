@@ -1,813 +1,1695 @@
 openapi: 3.0.0
 info:
-  title: Binance_api_collection
+  title: Binance Backend API
   version: 1.0.0
+  description: |
+    Binance-like Crypto Exchange Backend API
+
+    ## Authentication
+    - POST `/api/auth/login` เพื่อรับ `accessToken`
+    - ใส่ token ในปุ่ม **Authorize** ด้านบน (ใส่แค่ token ไม่ต้องใส่ "Bearer ")
+    - Access Token หมดอายุใน 15 นาที → ใช้ `/api/auth/refresh` เพื่อขอใหม่
+    - Refresh Token เก็บใน httpOnly cookie อัตโนมัติ
+
+    ## Seed Users (ทดสอบ)
+    | Email | Password |
+    |-------|----------|
+    | alice@example.com | password123 |
+    | bob@example.com | password123 |
+    | charlie@example.com | password123 |
+
+servers:
+  - url: http://localhost:3500
+    description: Local Development Server
+
+tags:
+  - name: auth
+    description: Authentication — Register, Login, Logout, Refresh Token
+  - name: user
+    description: User Management — CRUD
+  - name: currency
+    description: Currency Management — CRUD (CRYPTO / FIAT)
+  - name: market
+    description: Market Pair Management — CRUD, Status Toggle
+  - name: wallet
+    description: Wallet Management — Balance, Deposit, Transfer, Create
+  - name: order
+    description: Order Management — Create (Limit/Market), Cancel, Order Book
+  - name: trade
+    description: Trade Queries — ผลลัพธ์จากการ Match Order (read-only)
+  - name: transaction
+    description: Transaction History — ทุก Transaction ในระบบ (read-only)
+  - name: exchange-rate
+    description: Exchange Rate — อัตราแลกเปลี่ยน CRUD (auto-reverse)
+  - name: exchange
+    description: Swap / Exchange — แลกเปลี่ยนสกุลเงินทันทีด้วย Exchange Rate
+
+# ────────────────────────────────────────────
+# Security
+# ────────────────────────────────────────────
+security:
+  - bearerAuth: []
+
 paths:
+  # ══════════════════════════════════════════
+  #  AUTH
+  # ══════════════════════════════════════════
   /api/auth/register:
     post:
-      summary: registerUser
+      summary: Register — สมัครสมาชิก
+      description: |
+        สร้างบัญชีผู้ใช้ใหม่ พร้อมสร้าง wallet ให้ทุก currency ที่มีในระบบ
       operationId: registerUser
-      description: ''
-      tags:
-        - auth
-      responses:
-        '200':
-          description: ''
+      tags: [auth]
+      security: []
       requestBody:
-        $ref: '#/components/requestBodies/registeruser'
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: mypassword123
+      responses:
+        '201':
+          description: สมัครสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User registered successfully
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 4
+                      name:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john@example.com
+                      createdAt:
+                        type: string
+                        format: date-time
+                      wallets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Wallet'
+        '409':
+          description: Email ซ้ำ
+
   /api/auth/login:
     post:
-      summary: login
+      summary: Login — เข้าสู่ระบบ
+      description: |
+        ล็อกอินด้วย email + password
+        - ได้รับ `accessToken` (15 นาที) ใน response body
+        - ได้รับ `refreshToken` (7 วัน) ใน httpOnly cookie ชื่อ `jwt`
       operationId: login
-      description: ''
-      tags:
-        - auth
+      tags: [auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: alice@example.com
+                password:
+                  type: string
+                  example: password123
+            examples:
+              alice:
+                summary: Alice
+                value: { email: alice@example.com, password: password123 }
+              bob:
+                summary: Bob
+                value: { email: bob@example.com, password: password123 }
+              charlie:
+                summary: Charlie
+                value: { email: charlie@example.com, password: password123 }
       responses:
         '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/login'
+          description: เข้าสู่ระบบสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                        example: 1
+                      name:
+                        type: string
+                        example: Alice
+                      email:
+                        type: string
+                        example: alice@example.com
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIs...
+          headers:
+            Set-Cookie:
+              description: httpOnly cookie `jwt` containing refresh token
+              schema:
+                type: string
+        '401':
+          description: Email หรือ Password ผิด
+
   /api/auth/refresh:
     get:
-      summary: refresh
-      operationId: refresh
-      description: ''
-      tags:
-        - auth
+      summary: Refresh Token — ขอ Access Token ใหม่
+      description: |
+        ใช้ refresh token จาก cookie `jwt` เพื่อขอ access token ใหม่
+        (ไม่ต้องส่ง body)
+      operationId: refreshToken
+      tags: [auth]
+      security: []
       responses:
         '200':
-          description: ''
+          description: ได้ access token ใหม่
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '401':
+          description: ไม่มี refresh token cookie
+        '403':
+          description: Refresh token ไม่ถูกต้องหรือหมดอายุ
+
   /api/auth/logout:
     post:
-      summary: logout (1 device)
-      operationId: logout (1 device)
-      description: ''
-      tags:
-        - auth
+      summary: Logout — ออกจากระบบ (อุปกรณ์เดียว)
+      description: ลบ refresh token ของ session ปัจจุบัน (จาก cookie `jwt`)
+      operationId: logout
+      tags: [auth]
+      security: []
       responses:
-        '200':
-          description: ''
-      parameters:
-        - name: Authorization
-          in: header
-          description: ''
-          required: true
-          example: >-
-            Bearer
-            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySW5mbyI6eyJ1c2VySWQiOjQsImVtYWlsIjoicG9uZ3NhdG9ybm5lYUBnbWFpbC5jb20iLCJzZXNzaW9uSWQiOjE0fSwiaWF0IjoxNzcwODA3OTUxLCJleHAiOjE3NzA4MDg4NTF9.fhsmL6-MWLGza5VZPprEn3lmAECV-hAxdbHEifC_ESE
-        - name: ''
-          in: header
-          description: ''
-          required: true
-          example: >-
-            eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VySW5mbyI6eyJ1c2VySWQiOjQsImVtYWlsIjoicG9uZ3NhdG9ybm5lYUBnbWFpbC5jb20ifSwiaWF0IjoxNzcwODA3MjQ0LCJleHAiOjE3NzA4MDgxNDR9.lRfDQHmSMapny6zZFERqvixNiQVBtHOh6oEf_mkBQS4
+        '204':
+          description: ออกจากระบบสำเร็จ
+
   /api/auth/logout-all:
     post:
-      summary: logout (all device)
-      operationId: logout (all device)
-      description: ''
-      tags:
-        - auth
+      summary: Logout All — ออกจากระบบทุกอุปกรณ์
+      description: ลบ refresh token ทั้งหมดของ user (ต้องส่ง Authorization header)
+      operationId: logoutAll
+      tags: [auth]
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: Authorization
-          in: header
-          description: ''
-          required: true
-          example: Bearer {{accessToken}}
+          description: ออกจากระบบทุกอุปกรณ์สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logged out from 3 device(s)
+
+  # ══════════════════════════════════════════
+  #  USERS
+  # ══════════════════════════════════════════
   /api/users:
     get:
-      summary: getAllUsers
+      summary: Get All Users
       operationId: getAllUsers
-      description: ''
-      tags:
-        - user
+      tags: [user]
       responses:
         '200':
-          description: ''
-  /api/users/:id:
+          description: รายชื่อผู้ใช้ทั้งหมด
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+
+  /api/users/{id}:
     get:
-      summary: getUserById
+      summary: Get User by ID
       operationId: getUserById
-      description: ''
-      tags:
-        - user
+      tags: [user]
+      parameters:
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '4'
+          description: ข้อมูลผู้ใช้ พร้อม wallets และ socialAccounts
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/User'
+                  - type: object
+                    properties:
+                      wallets:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Wallet'
+                      socialAccounts:
+                        type: array
+                        items:
+                          type: object
+        '404':
+          description: ไม่พบผู้ใช้
+
     put:
-      summary: updateUserById
+      summary: Update User by ID
       operationId: updateUserById
-      description: ''
-      tags:
-        - user
-      responses:
-        '200':
-          description: ''
+      tags: [user]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '4'
+        - $ref: '#/components/parameters/idPath'
       requestBody:
-        $ref: '#/components/requestBodies/updateuserbyid'
-    delete:
-      summary: deleteUserById
-      operationId: deleteUserById
-      description: ''
-      tags:
-        - user
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Alice Updated
+                email:
+                  type: string
+                  example: alice_new@example.com
+                password:
+                  type: string
+                  example: newpassword123
+                avatarUrl:
+                  type: string
+                  example: https://example.com/avatar.jpg
       responses:
         '200':
-          description: ''
+          description: อัปเดตสำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: ไม่พบผู้ใช้
+
+    delete:
+      summary: Delete User by ID
+      operationId: deleteUserById
+      tags: [user]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '6'
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: ลบสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: User deleted
+
+  # ══════════════════════════════════════════
+  #  CURRENCIES
+  # ══════════════════════════════════════════
   /api/currencies:
     get:
-      summary: getAllCurrencies
+      summary: Get All Currencies
       operationId: getAllCurrencies
-      description: ''
-      tags:
-        - currency
+      tags: [currency]
       responses:
         '200':
-          description: ''
+          description: รายการสกุลเงินทั้งหมด
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Currency'
+
     post:
-      summary: createNewCurrency
-      operationId: createNewCurrency
-      description: ''
-      tags:
-        - currency
-      responses:
-        '200':
-          description: ''
+      summary: Create New Currency
+      operationId: createCurrency
+      tags: [currency]
       requestBody:
-        $ref: '#/components/requestBodies/createnewcurrency'
-  /api/currencies/:id:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symbol, name, type]
+              properties:
+                symbol:
+                  type: string
+                  example: SOL
+                name:
+                  type: string
+                  example: Solana
+                type:
+                  type: string
+                  enum: [CRYPTO, FIAT]
+                  example: CRYPTO
+                precision:
+                  type: integer
+                  example: 8
+                  description: ทศนิยม (default 8)
+      responses:
+        '201':
+          description: สร้างสำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Currency'
+
+  /api/currencies/{id}:
     get:
-      summary: getCurrencyById
+      summary: Get Currency by ID
       operationId: getCurrencyById
-      description: ''
-      tags:
-        - currency
+      tags: [currency]
+      parameters:
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '1'
+          description: ข้อมูลสกุลเงิน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Currency'
+        '404':
+          description: ไม่พบสกุลเงิน
+
     put:
-      summary: updateCurrencyById
+      summary: Update Currency by ID
       operationId: updateCurrencyById
-      description: ''
-      tags:
-        - currency
-      responses:
-        '200':
-          description: ''
+      tags: [currency]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '16'
+        - $ref: '#/components/parameters/idPath'
       requestBody:
-        $ref: '#/components/requestBodies/updatecurrencybyid'
-    delete:
-      summary: deleteCurrencyById
-      operationId: deleteCurrencyById
-      description: ''
-      tags:
-        - currency
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol:
+                  type: string
+                name:
+                  type: string
+                type:
+                  type: string
+                  enum: [CRYPTO, FIAT]
+                precision:
+                  type: integer
       responses:
         '200':
-          description: ''
+          description: อัปเดตสำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Currency'
+
+    delete:
+      summary: Delete Currency by ID
+      operationId: deleteCurrencyById
+      tags: [currency]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '16'
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: ลบสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Currency deleted
+
+  # ══════════════════════════════════════════
+  #  MARKETS
+  # ══════════════════════════════════════════
   /api/markets:
     get:
-      summary: getAllMarkets
+      summary: Get All Markets
       operationId: getAllMarkets
-      description: ''
-      tags:
-        - market
+      tags: [market]
       responses:
         '200':
-          description: ''
+          description: รายการ market pairs ทั้งหมด
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Market'
+
+    post:
+      summary: Create New Market Pair
+      description: สร้างคู่ตลาดใหม่ เช่น BTC/THB
+      operationId: createMarket
+      tags: [market]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [baseCurrencyId, quoteCurrencyId]
+              properties:
+                baseCurrencyId:
+                  type: integer
+                  example: 1
+                  description: "Currency ID ของเหรียญ base (เช่น BTC)"
+                quoteCurrencyId:
+                  type: integer
+                  example: 4
+                  description: "Currency ID ของเหรียญ quote (เช่น THB)"
+                status:
+                  type: string
+                  enum: [ACTIVE, PAUSED, CLOSED]
+                  default: ACTIVE
+            examples:
+              btc_thb:
+                summary: BTC/THB
+                value: { baseCurrencyId: 1, quoteCurrencyId: 4 }
+              eth_thb:
+                summary: ETH/THB
+                value: { baseCurrencyId: 2, quoteCurrencyId: 4 }
+      responses:
+        '201':
+          description: สร้าง market pair สำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+
   /api/markets/active:
     get:
-      summary: getActiveMarkets
+      summary: Get Active Markets
+      description: ดึง market ที่มีสถานะ ACTIVE เท่านั้น
       operationId: getActiveMarkets
-      description: ''
-      tags:
-        - market
+      tags: [market]
       responses:
         '200':
-          description: ''
-  /api/markets/:id:
+          description: Markets ที่ ACTIVE
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Market'
+
+  /api/markets/{id}:
     get:
-      summary: getMarketById
+      summary: Get Market by ID
       operationId: getMarketById
-      description: ''
-      tags:
-        - market
+      tags: [market]
+      parameters:
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '3'
+          description: ข้อมูล market pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+        '404':
+          description: ไม่พบ market
+
     delete:
-      summary: deleteMarketPairById
-      operationId: deleteMarketPairById
-      description: ''
-      tags:
-        - market
-      responses:
-        '200':
-          description: ''
+      summary: Delete Market by ID
+      operationId: deleteMarketById
+      tags: [market]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '11'
-  /api/markets/:
-    post:
-      summary: createNewMarket
-      operationId: createNewMarket
-      description: ''
-      tags:
-        - market
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/createnewmarket'
-  /api/markets/:id/status:
+          description: ลบสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Market deleted
+
+  /api/markets/{id}/status:
     patch:
-      summary: updateMarketStatusById
-      operationId: updateMarketStatusById
-      description: ''
-      tags:
-        - market
-      responses:
-        '200':
-          description: ''
+      summary: Update Market Status
+      description: เปลี่ยนสถานะของ market pair (ACTIVE / PAUSED / CLOSED)
+      operationId: updateMarketStatus
+      tags: [market]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '11'
+        - $ref: '#/components/parameters/idPath'
       requestBody:
-        $ref: '#/components/requestBodies/updatemarketstatusbyid'
-  /api/wallets/user/:userId:
-    get:
-      summary: getWalletsByUserId (wallets for each user)
-      operationId: getWalletsByUserId (wallets for each user)
-      description: ''
-      tags:
-        - wallet
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, PAUSED, CLOSED]
+                  example: PAUSED
       responses:
         '200':
-          description: ''
+          description: อัปเดตสถานะสำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Market'
+
+  # ══════════════════════════════════════════
+  #  WALLETS
+  # ══════════════════════════════════════════
+  /api/wallets/user/{userId}:
+    get:
+      summary: Get Wallets by User ID
+      description: ดึง wallets ทั้งหมดของ user พร้อมข้อมูล currency
+      operationId: getWalletsByUserId
+      tags: [wallet]
       parameters:
         - name: userId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '7'
-  /api/wallets/user/:userId/currency/:currencyId:
-    get:
-      summary: getWalletBy UserId And CurrencyId
-      operationId: getWalletBy UserId And CurrencyId
-      description: ''
-      tags:
-        - wallet
+          schema:
+            type: integer
+          example: 1
       responses:
         '200':
-          description: ''
+          description: รายการ wallets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Wallet'
+
+  /api/wallets/user/{userId}/currency/{currencyId}:
+    get:
+      summary: Get Wallet by User + Currency
+      description: ดึง wallet เฉพาะคู่ userId + currencyId
+      operationId: getWalletByUserAndCurrency
+      tags: [wallet]
       parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+          example: 1
         - name: currencyId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '1'
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: ข้อมูล wallet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+        '404':
+          description: ไม่พบ wallet
+
+  /api/wallets:
+    post:
+      summary: Create New Wallet
+      description: สร้าง wallet ใหม่ให้ user สำหรับ currency ที่ระบุ
+      operationId: createWallet
+      tags: [wallet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, currencyId]
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                currencyId:
+                  type: integer
+                  example: 1
+      responses:
+        '201':
+          description: สร้าง wallet สำเร็จ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Wallet'
+
+  /api/wallets/create-all/{userId}:
+    post:
+      summary: Create All Wallets for User
+      description: |
+        สร้าง wallet ให้ user สำหรับทุก currency ที่ยังไม่มี
+        (ถ้ามีอยู่แล้วจะข้ามไป ไม่ error)
+      operationId: createAllWalletsForUser
+      tags: [wallet]
+      parameters:
         - name: userId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '7'
-  /api/wallets/:
-    post:
-      summary: createNewWallet
-      operationId: createNewWallet
-      description: ''
-      tags:
-        - wallet
+          schema:
+            type: integer
+          example: 1
       responses:
-        '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/createnewwallet'
-  /api/wallets/transfer:
-    post:
-      summary: internal transferWallet (user to user)
-      operationId: internal transferWallet (user to user)
-      description: ''
-      tags:
-        - wallet
-      responses:
-        '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/internal_transferwallet_(user_to_user)'
+        '201':
+          description: สร้าง wallets สำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Created 3 wallet(s) for user 1 (3 already existed)
+
   /api/wallets/deposit:
     post:
-      summary: updateWalletBalanceBy (deposit)
-      operationId: updateWalletBalanceBy (deposit)
-      description: ''
-      tags:
-        - wallet
-      responses:
-        '200':
-          description: ''
+      summary: Deposit — เติมเงินเข้า Wallet
+      description: |
+        เพิ่ม balance ให้ wallet ของ user
+        พร้อมสร้าง Transaction record (type: DEPOSIT, direction: IN)
+      operationId: deposit
+      tags: [wallet]
       requestBody:
-        $ref: '#/components/requestBodies/updatewalletbalanceby_(deposit)'
-  /api/wallets/create-all/:userId:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, currencyId, amount]
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                currencyId:
+                  type: integer
+                  example: 1
+                  description: "Currency ID (1=BTC, 2=ETH, 3=XRP, 4=THB, 5=USD, 6=DOGE)"
+                amount:
+                  type: number
+                  example: 0.5
+            examples:
+              deposit_btc:
+                summary: Deposit 0.5 BTC ให้ Alice
+                value: { userId: 1, currencyId: 1, amount: 0.5 }
+              deposit_thb:
+                summary: Deposit 100,000 THB ให้ Alice
+                value: { userId: 1, currencyId: 4, amount: 100000 }
+      responses:
+        '200':
+          description: เติมเงินสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Deposit successful
+                  userId:
+                    type: integer
+                    example: 1
+                  currency:
+                    type: string
+                    example: BTC
+                  deposited:
+                    type: number
+                    example: 0.5
+                  balanceAfter:
+                    type: number
+                    example: 2.5
+
+  /api/wallets/transfer:
     post:
-      summary: createAllWalletByUserId
-      operationId: createAllWalletByUserId
-      description: ''
-      tags:
-        - wallet
+      summary: Transfer — โอนเงินระหว่าง Users
+      description: |
+        โอนเงินจาก user หนึ่งไปยังอีก user
+        สร้าง 2 Transaction records (sender OUT, receiver IN)
+      operationId: transfer
+      tags: [wallet]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [senderId, receiverId, currencyId, amount]
+              properties:
+                senderId:
+                  type: integer
+                  example: 1
+                receiverId:
+                  type: integer
+                  example: 2
+                currencyId:
+                  type: integer
+                  example: 4
+                  description: "Currency ID"
+                amount:
+                  type: number
+                  example: 50000
+            examples:
+              transfer_thb:
+                summary: Alice โอน 50,000 THB ให้ Bob
+                value: { senderId: 1, receiverId: 2, currencyId: 4, amount: 50000 }
+              transfer_btc:
+                summary: Bob โอน 0.1 BTC ให้ Charlie
+                value: { senderId: 2, receiverId: 3, currencyId: 1, amount: 0.1 }
       responses:
         '200':
-          description: ''
+          description: โอนเงินสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Transfer successful
+                  sender:
+                    type: object
+                    properties:
+                      userId:
+                        type: integer
+                      balanceAfter:
+                        type: number
+                  receiver:
+                    type: object
+                    properties:
+                      userId:
+                        type: integer
+                      balanceAfter:
+                        type: number
+                  currency:
+                    type: string
+                    example: THB
+                  amount:
+                    type: number
+                    example: 50000
+
+  # ══════════════════════════════════════════
+  #  ORDERS
+  # ══════════════════════════════════════════
+  /api/orders/user/{userId}:
+    get:
+      summary: Get Orders by User ID
+      operationId: getOrdersByUserId
+      tags: [order]
       parameters:
         - name: userId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '4'
-  /api/orders/user/:userId:
-    get:
-      summary: getOrderByUserId
-      operationId: getOrderByUserId
-      description: ''
-      tags:
-        - order
+          schema:
+            type: integer
+          example: 1
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: userId
-          in: query
-          description: ''
-          required: true
-          example: '8'
-  /api/orders/market/:marketId/book:
+          description: รายการ orders ของ user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+
+  /api/orders/market/{marketId}/book:
     get:
-      summary: getOrderBook (ดึง Bids, asks ของตลาด)
-      operationId: getOrderBook (ดึง Bids, asks ของตลาด)
-      description: ''
-      tags:
-        - order
-      responses:
-        '200':
-          description: ''
+      summary: Get Order Book — ดู Bids/Asks ของตลาด
+      description: |
+        ดึง order book ของ market
+        - **bids** = คำสั่ง BUY ที่รอ (เรียงราคาสูง→ต่ำ)
+        - **asks** = คำสั่ง SELL ที่รอ (เรียงราคาต่ำ→สูง)
+      operationId: getOrderBook
+      tags: [order]
       parameters:
         - name: marketId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '1'
-  /api/orders/:id:
-    get:
-      summary: getOrderByOrderId
-      operationId: getOrderByOrderId
-      description: ''
-      tags:
-        - order
+          schema:
+            type: integer
+          example: 1
+          description: "Market ID (1=BTC/THB, 2=ETH/THB, ...)"
       responses:
         '200':
-          description: ''
+          description: Order book
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bids:
+                    type: array
+                    description: "BUY orders (ราคาสูง→ต่ำ)"
+                    items:
+                      $ref: '#/components/schemas/Order'
+                  asks:
+                    type: array
+                    description: "SELL orders (ราคาต่ำ→สูง)"
+                    items:
+                      $ref: '#/components/schemas/Order'
+
+  /api/orders/{id}:
+    get:
+      summary: Get Order by ID
+      description: ดึง order พร้อม trades ที่เกี่ยวข้อง
+      operationId: getOrderById
+      tags: [order]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '1'
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: ข้อมูล order พร้อม trades
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Order'
+                  - type: object
+                    properties:
+                      buyTrades:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Trade'
+                      sellTrades:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Trade'
+
   /api/orders:
     post:
-      summary: createNewOrder
-      operationId: createNewOrder
-      description: ''
-      tags:
-        - order
-      responses:
-        '200':
-          description: ''
+      summary: Create New Order — สร้างคำสั่งซื้อ/ขาย
+      description: |
+        สร้าง order ใหม่ ระบบจะทำสิ่งเหล่านี้อัตโนมัติ:
+        1. **Lock balance** — หักเงินจาก balance ไปเก็บใน lockBalance
+        2. **Try Match** — ค้นหา order ฝั่งตรงข้ามที่ราคาตรง แล้วสร้าง trade
+        3. **Self-trade prevention** — ไม่ match กับ order ของตัวเอง
+
+        ### ตัวอย่าง Side + Type
+        | Side | Type | price | ผลลัพธ์ |
+        |------|------|-------|---------|
+        | BUY | LIMIT | ต้องระบุ | ตั้งซื้อที่ราคาที่กำหนด |
+        | BUY | MARKET | ไม่ต้อง (ดึงจาก exchange rate) | ซื้อทันทีที่ราคาตลาด |
+        | SELL | LIMIT | ต้องระบุ | ตั้งขายที่ราคาที่กำหนด |
+        | SELL | MARKET | ไม่ต้อง (ดึงจาก exchange rate) | ขายทันทีที่ราคาตลาด |
+
+        ### filledType
+        - **SINGLE** — match ได้ครั้งเดียว (1 opposing order)
+        - **MULTIPLE** — match ได้หลายครั้ง (หลาย opposing orders)
+      operationId: createOrder
+      tags: [order]
       requestBody:
-        $ref: '#/components/requestBodies/createneworder'
-  /api/orders/:id/cancel:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, marketId, side, type, amount]
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                marketId:
+                  type: integer
+                  example: 1
+                  description: "Market ID (1=BTC/THB, 2=ETH/THB, ...)"
+                side:
+                  type: string
+                  enum: [BUY, SELL]
+                  example: BUY
+                type:
+                  type: string
+                  enum: [LIMIT, MARKET]
+                  example: LIMIT
+                price:
+                  type: number
+                  example: 3000000
+                  description: "ต้องระบุสำหรับ LIMIT order (MARKET จะดึงจาก exchange rate อัตโนมัติ)"
+                amount:
+                  type: number
+                  example: 0.5
+                  description: "จำนวน base currency"
+                filledType:
+                  type: string
+                  enum: [SINGLE, MULTIPLE]
+                  default: SINGLE
+            examples:
+              buy_limit_btc:
+                summary: "BUY LIMIT — ซื้อ 0.5 BTC ที่ราคา 3,000,000 THB"
+                value:
+                  userId: 1
+                  marketId: 1
+                  side: BUY
+                  type: LIMIT
+                  price: 3000000
+                  amount: 0.5
+              sell_limit_btc:
+                summary: "SELL LIMIT — ขาย 0.5 BTC ที่ราคา 3,000,000 THB"
+                value:
+                  userId: 2
+                  marketId: 1
+                  side: SELL
+                  type: LIMIT
+                  price: 3000000
+                  amount: 0.5
+              buy_market_btc:
+                summary: "BUY MARKET — ซื้อ 0.1 BTC ที่ราคาตลาด"
+                value:
+                  userId: 1
+                  marketId: 1
+                  side: BUY
+                  type: MARKET
+                  amount: 0.1
+              sell_market_btc:
+                summary: "SELL MARKET — ขาย 0.1 BTC ที่ราคาตลาด"
+                value:
+                  userId: 2
+                  marketId: 1
+                  side: SELL
+                  type: MARKET
+                  amount: 0.1
+              buy_limit_multiple:
+                summary: "BUY LIMIT MULTIPLE — ซื้อ 1 BTC (match หลาย orders)"
+                value:
+                  userId: 1
+                  marketId: 1
+                  side: BUY
+                  type: LIMIT
+                  price: 3100000
+                  amount: 1
+                  filledType: MULTIPLE
+              buy_limit_eth:
+                summary: "BUY LIMIT — ซื้อ 2 ETH ที่ราคา 100,000 THB (market 2)"
+                value:
+                  userId: 1
+                  marketId: 2
+                  side: BUY
+                  type: LIMIT
+                  price: 100000
+                  amount: 2
+              sell_limit_eth:
+                summary: "SELL LIMIT — ขาย 2 ETH ที่ราคา 100,000 THB (market 2)"
+                value:
+                  userId: 2
+                  marketId: 2
+                  side: SELL
+                  type: LIMIT
+                  price: 100000
+                  amount: 2
+      responses:
+        '201':
+          description: |
+            สร้าง order สำเร็จ
+            - ถ้า match ได้ จะมี trades ใน buyTrades/sellTrades
+            - ถ้า match ไม่ได้ จะเป็น OPEN order รอใน order book
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Order'
+                  - type: object
+                    properties:
+                      buyTrades:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Trade'
+                      sellTrades:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Trade'
+        '400':
+          description: Validation error หรือ balance ไม่พอ
+
+  /api/orders/{id}/cancel:
     patch:
-      summary: cancelOrder
+      summary: Cancel Order — ยกเลิกคำสั่ง
+      description: |
+        ยกเลิก order ที่มีสถานะ OPEN
+        - คืน lockBalance กลับเป็น balance
+        - เปลี่ยนสถานะเป็น CANCELLED
       operationId: cancelOrder
-      description: ''
-      tags:
-        - order
-      responses:
-        '200':
-          description: ''
+      tags: [order]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '8'
+        - $ref: '#/components/parameters/idPath'
       requestBody:
-        $ref: '#/components/requestBodies/cancelorder'
-  /api/trades/market/:marketId:
-    get:
-      summary: getTradesByMarketId
-      operationId: getTradesByMarketId
-      description: ''
-      tags:
-        - trade
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId]
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                  description: "ต้องเป็นเจ้าของ order"
       responses:
         '200':
-          description: ''
+          description: ยกเลิกสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Order cancelled
+                  order:
+                    $ref: '#/components/schemas/Order'
+
+  # ══════════════════════════════════════════
+  #  TRADES  (read-only — สร้างจากระบบ matching)
+  # ══════════════════════════════════════════
+  /api/trades/market/{marketId}:
+    get:
+      summary: Get Trades by Market ID
+      description: ดึง trade history ของตลาด
+      operationId: getTradesByMarketId
+      tags: [trade]
       parameters:
         - name: marketId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '1'
-  /api/trades/:userId:
-    get:
-      summary: getTradeByUserId
-      operationId: getTradeByUserId
-      description: ''
-      tags:
-        - trade
+          schema:
+            type: integer
+          example: 1
       responses:
         '200':
-          description: ''
+          description: รายการ trades
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
+
+  /api/trades/user/{userId}:
+    get:
+      summary: Get Trades by User ID
+      description: ดึง trades ทั้งหมดที่ user มีส่วนเกี่ยวข้อง (ทั้ง buyer และ seller)
+      operationId: getTradesByUserId
+      tags: [trade]
       parameters:
         - name: userId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '4'
-  /api/trades/:id:
+          schema:
+            type: integer
+          example: 1
+      responses:
+        '200':
+          description: รายการ trades ของ user
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Trade'
+
+  /api/trades/{id}:
     get:
-      summary: getTradeById
+      summary: Get Trade by ID
       operationId: getTradeById
-      description: ''
-      tags:
-        - trade
-      responses:
-        '200':
-          description: ''
+      tags: [trade]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '4'
-  /api/transactions/user/:userId:
-    get:
-      summary: getTransactionsByUserId
-      operationId: getTransactionsByUserId
-      description: ''
-      tags:
-        - transaction
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
+          description: รายละเอียด trade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Trade'
+
+  # ══════════════════════════════════════════
+  #  TRANSACTIONS  (read-only)
+  # ══════════════════════════════════════════
+  /api/transactions/user/{userId}:
+    get:
+      summary: Get Transactions by User ID
+      description: |
+        ดึง transactions ทั้งหมดของ user พร้อม populate `ref` ตาม refType:
+        - **ORDER** → ข้อมูล Order
+        - **TRADE** → ข้อมูล Trade
+        - **EXCHANGE** → ข้อมูล Transaction ที่เกี่ยวข้อง
+      operationId: getTransactionsByUserId
+      tags: [transaction]
       parameters:
         - name: userId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '4'
-  /api/transactions/:id:
-    get:
-      summary: getTransactionById
-      operationId: getTransactionById
-      description: ''
-      tags:
-        - transaction
+          schema:
+            type: integer
+          example: 1
       responses:
         '200':
-          description: ''
+          description: รายการ transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Transaction'
+
+  /api/transactions/{id}:
+    get:
+      summary: Get Transaction by ID
+      operationId: getTransactionById
+      tags: [transaction]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '16'
+        - $ref: '#/components/parameters/idPath'
+      responses:
+        '200':
+          description: รายละเอียด transaction พร้อม ref
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+
+  # ══════════════════════════════════════════
+  #  EXCHANGE RATES
+  # ══════════════════════════════════════════
   /api/exchange-rates:
     get:
-      summary: getAllExchangeRates
+      summary: Get All Exchange Rates
       operationId: getAllExchangeRates
-      description: ''
-      tags:
-        - exchange rate
+      tags: [exchange-rate]
       responses:
         '200':
-          description: ''
-  /api/exchange-rates/:id:
+          description: อัตราแลกเปลี่ยนทั้งหมด
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExchangeRate'
+
+    post:
+      summary: Create / Update Exchange Rate (auto-reverse)
+      description: |
+        สร้างหรืออัปเดตอัตราแลกเปลี่ยน
+        - ระบบจะสร้าง/อัปเดต **ทั้งสองทิศทาง** อัตโนมัติ
+        - เช่น ใส่ BTC→THB = 3,000,000 จะได้ THB→BTC = 0.00000033 ด้วย
+      operationId: upsertExchangeRate
+      tags: [exchange-rate]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromCurrencyId, toCurrencyId, rate]
+              properties:
+                fromCurrencyId:
+                  type: integer
+                  example: 1
+                  description: "Currency ID ต้นทาง (1=BTC)"
+                toCurrencyId:
+                  type: integer
+                  example: 4
+                  description: "Currency ID ปลายทาง (4=THB)"
+                rate:
+                  type: number
+                  example: 3000000
+                  description: "1 หน่วย fromCurrency = rate หน่วย toCurrency"
+            examples:
+              btc_to_thb:
+                summary: "BTC → THB = 3,000,000"
+                value: { fromCurrencyId: 1, toCurrencyId: 4, rate: 3000000 }
+              eth_to_thb:
+                summary: "ETH → THB = 100,000"
+                value: { fromCurrencyId: 2, toCurrencyId: 4, rate: 100000 }
+              btc_to_usd:
+                summary: "BTC → USD = 85,000"
+                value: { fromCurrencyId: 1, toCurrencyId: 5, rate: 85000 }
+      responses:
+        '200':
+          description: สร้าง/อัปเดตสำเร็จ (ทั้งสองทิศทาง)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  forward:
+                    $ref: '#/components/schemas/ExchangeRate'
+                  reverse:
+                    $ref: '#/components/schemas/ExchangeRate'
+
+  /api/exchange-rates/{id}:
     get:
-      summary: getExchangeRateById
+      summary: Get Exchange Rate by ID
       operationId: getExchangeRateById
-      description: ''
-      tags:
-        - exchange rate
+      tags: [exchange-rate]
+      parameters:
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
-      parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: '18'
+          description: อัตราแลกเปลี่ยน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRate'
+
     delete:
-      summary: deleteExchangeRate
+      summary: Delete Exchange Rate
       operationId: deleteExchangeRate
-      description: ''
-      tags:
-        - exchange rate
-      responses:
-        '200':
-          description: ''
+      tags: [exchange-rate]
       parameters:
-        - name: id
-          in: query
-          description: ''
-          required: true
-          example: ''
-  /api/exchange-rates/pair/:fromCurrencyId/:toCurrencyId:
-    get:
-      summary: getExchangeRateByPair
-      operationId: getExchangeRateByPair
-      description: ''
-      tags:
-        - exchange rate
+        - $ref: '#/components/parameters/idPath'
       responses:
         '200':
-          description: ''
+          description: ลบสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Exchange rate deleted
+
+  /api/exchange-rates/pair/{fromCurrencyId}/{toCurrencyId}:
+    get:
+      summary: Get Exchange Rate by Currency Pair
+      description: ดึงอัตราแลกเปลี่ยนจาก currency ID คู่
+      operationId: getExchangeRateByPair
+      tags: [exchange-rate]
       parameters:
         - name: fromCurrencyId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '15'
+          schema:
+            type: integer
+          example: 1
+          description: "Currency ID ต้นทาง"
         - name: toCurrencyId
-          in: query
-          description: ''
+          in: path
           required: true
-          example: '4'
-  /api/exchange-rates/:
-    post:
-      summary: create or update exchange rates
-      operationId: create or update exchange rates
-      description: ''
-      tags:
-        - exchange rate
+          schema:
+            type: integer
+          example: 4
+          description: "Currency ID ปลายทาง"
       responses:
         '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/create_or_update_exchange_rates'
+          description: อัตราแลกเปลี่ยน
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExchangeRate'
+        '404':
+          description: ไม่พบอัตราแลกเปลี่ยนสำหรับคู่นี้
+
+  # ══════════════════════════════════════════
+  #  EXCHANGE / SWAP
+  # ══════════════════════════════════════════
   /api/exchange:
     post:
-      summary: exchangeWithMarket
+      summary: Swap / Exchange Currency — แลกเงินทันที
+      description: |
+        แลกเปลี่ยนสกุลเงินทันทีตาม exchange rate ในระบบ
+        (ไม่ผ่าน order book — ใช้ rate จากตาราง ExchangeRate)
+
+        ### ตัวอย่าง
+        - แลก 1 BTC → THB → ได้ 3,000,000 THB (ตาม rate)
+        - แลก 100,000 THB → ETH → ได้ 1 ETH (ตาม rate)
       operationId: exchangeWithMarket
-      description: ''
-      tags:
-        - exchange (user + market)
+      tags: [exchange]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, fromCurrencyId, toCurrencyId, amount]
+              properties:
+                userId:
+                  type: integer
+                  example: 1
+                fromCurrencyId:
+                  type: integer
+                  example: 1
+                  description: "Currency ID ที่ต้องการขาย"
+                toCurrencyId:
+                  type: integer
+                  example: 4
+                  description: "Currency ID ที่ต้องการซื้อ"
+                amount:
+                  type: number
+                  example: 0.5
+                  description: "จำนวน fromCurrency ที่ต้องการแลก"
+            examples:
+              btc_to_thb:
+                summary: "Alice แลก 0.5 BTC → THB"
+                value: { userId: 1, fromCurrencyId: 1, toCurrencyId: 4, amount: 0.5 }
+              thb_to_eth:
+                summary: "Bob แลก 100,000 THB → ETH"
+                value: { userId: 2, fromCurrencyId: 4, toCurrencyId: 2, amount: 100000 }
+              usd_to_btc:
+                summary: "Charlie แลก 10,000 USD → BTC"
+                value: { userId: 3, fromCurrencyId: 5, toCurrencyId: 1, amount: 10000 }
       responses:
         '200':
-          description: ''
-      requestBody:
-        $ref: '#/components/requestBodies/exchangewithmarket'
-servers: []
+          description: แลกเปลี่ยนสำเร็จ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Exchange successful
+                  from:
+                    type: object
+                    properties:
+                      currency:
+                        type: string
+                        example: BTC
+                      amount:
+                        type: number
+                        example: 0.5
+                      balanceAfter:
+                        type: number
+                        example: 1.5
+                  to:
+                    type: object
+                    properties:
+                      currency:
+                        type: string
+                        example: THB
+                      amount:
+                        type: number
+                        example: 1500000
+                      balanceAfter:
+                        type: number
+                        example: 6500000
+                  rate:
+                    type: number
+                    example: 3000000
+        '400':
+          description: Balance ไม่พอ หรือไม่พบ exchange rate
+
+# ════════════════════════════════════════════
+#  COMPONENTS
+# ════════════════════════════════════════════
 components:
+  # ─── Security ─────────────────────────────
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        ใช้ accessToken ที่ได้จาก Login
+        กดปุ่ม Authorize แล้ววาง token (ไม่ต้องใส่ "Bearer ")
+
+  # ─── Parameters ───────────────────────────
+  parameters:
+    idPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+      example: 1
+      description: Resource ID
+
+  # ─── Schemas ──────────────────────────────
   schemas:
-    registeruser:
+    User:
       type: object
       properties:
+        id:
+          type: integer
+          example: 1
         name:
           type: string
+          example: Alice
         email:
           type: string
-        password:
+          example: alice@example.com
+        avatarUrl:
           type: string
-    login:
+          nullable: true
+          example: null
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Currency:
       type: object
       properties:
-        email:
-          type: string
-        password:
-          type: string
-    updateuserbyid:
-      type: object
-      properties: {}
-    createnewcurrency:
-      type: object
-      properties:
+        id:
+          type: integer
+          example: 1
         symbol:
           type: string
+          example: BTC
         name:
           type: string
+          example: Bitcoin
         type:
           type: string
+          enum: [CRYPTO, FIAT]
+          example: CRYPTO
         precision:
-          type: number
-    updatecurrencybyid:
-      type: object
-      properties: {}
-    createnewmarket:
-      type: object
-      properties: {}
-    updatemarketstatusbyid:
-      type: object
-      properties: {}
-    createnewwallet:
-      type: object
-      properties: {}
-    internal_transferwallet_(user_to_user):
+          type: integer
+          example: 8
+
+    Wallet:
       type: object
       properties:
-        senderId:
-          type: number
-        receiverId:
-          type: number
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 1
         currencyId:
+          type: integer
+          example: 1
+        balance:
           type: number
+          example: 2.0
+          description: "ยอดคงเหลือที่ใช้ได้"
+        lockBalance:
+          type: number
+          example: 0.5
+          description: "ยอดที่ถูก lock ไว้สำหรับ order"
+        updatedAt:
+          type: string
+          format: date-time
+        currency:
+          $ref: '#/components/schemas/Currency'
+
+    Market:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        baseCurrencyId:
+          type: integer
+          example: 1
+        quoteCurrencyId:
+          type: integer
+          example: 4
+        status:
+          type: string
+          enum: [ACTIVE, PAUSED, CLOSED]
+          example: ACTIVE
+        baseCurrency:
+          $ref: '#/components/schemas/Currency'
+        quoteCurrency:
+          $ref: '#/components/schemas/Currency'
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 1
+        marketId:
+          type: integer
+          example: 1
+        side:
+          type: string
+          enum: [BUY, SELL]
+          example: BUY
+        type:
+          type: string
+          enum: [LIMIT, MARKET]
+          example: LIMIT
+        price:
+          type: number
+          example: 3000000
         amount:
           type: number
-    updatewalletbalanceby_(deposit):
+          example: 0.5
+        filledAmount:
+          type: number
+          example: 0
+          description: "จำนวนที่ match ไปแล้ว"
+        filledType:
+          type: string
+          enum: [SINGLE, MULTIPLE]
+          example: SINGLE
+        status:
+          type: string
+          enum: [OPEN, FILLED, CANCELLED]
+          example: OPEN
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        market:
+          $ref: '#/components/schemas/Market'
+
+    Trade:
       type: object
       properties:
-        userId:
+        id:
+          type: integer
+          example: 1
+        buyOrderId:
+          type: integer
+          example: 1
+        sellOrderId:
+          type: integer
+          example: 2
+        price:
           type: number
-        currencyId:
-          type: number
+          example: 3000000
+          description: "ราคาที่ match (ใช้ราคาของ maker)"
         amount:
           type: number
-    createneworder:
-      type: object
-      properties: {}
-    cancelorder:
-      type: object
-      properties:
-        userId:
+          example: 0.5
+        fee:
           type: number
-    create_or_update_exchange_rates:
+          example: 0
+        createdAt:
+          type: string
+          format: date-time
+        buyOrder:
+          $ref: '#/components/schemas/Order'
+        sellOrder:
+          $ref: '#/components/schemas/Order'
+
+    Transaction:
       type: object
       properties:
+        id:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 1
+        currencyId:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [TRADE, EXCHANGE, DEPOSIT, BONUS, TRANSFER]
+          example: DEPOSIT
+          description: |
+            - TRADE = จาก order matching
+            - EXCHANGE = จากการ swap
+            - DEPOSIT = เติมเงิน
+            - BONUS = โบนัส
+            - TRANSFER = โอนระหว่าง users
+        direction:
+          type: string
+          enum: [IN, OUT]
+          example: IN
+        amount:
+          type: number
+          example: 2.0
+        balanceBefore:
+          type: number
+          example: 0
+        balanceAfter:
+          type: number
+          example: 2.0
+        refType:
+          type: string
+          enum: [ORDER, TRADE, EXCHANGE, TRANSFER, DEPOSIT]
+          nullable: true
+          example: DEPOSIT
+          description: "ประเภทของ record อ้างอิง"
+        refId:
+          type: integer
+          nullable: true
+          example: null
+          description: "ID ของ record อ้างอิง"
+        createdAt:
+          type: string
+          format: date-time
+        currency:
+          $ref: '#/components/schemas/Currency'
+        ref:
+          type: object
+          nullable: true
+          description: "ข้อมูลอ้างอิงที่ populate ตาม refType"
+
+    ExchangeRate:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
         fromCurrencyId:
-          type: number
+          type: integer
+          example: 1
         toCurrencyId:
-          type: number
+          type: integer
+          example: 4
         rate:
           type: number
-    exchangewithmarket:
-      type: object
-      properties:
-        userId:
-          type: number
-        fromCurrencyId:
-          type: number
-        toCurrencyId:
-          type: number
-        amount:
-          type: number
-  requestBodies:
-    registeruser:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/registeruser'
-      description: ''
-      required: true
-    login:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/login'
-      description: ''
-      required: true
-    updateuserbyid:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/updateuserbyid'
-      description: ''
-      required: true
-    createnewcurrency:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/createnewcurrency'
-      description: ''
-      required: true
-    updatecurrencybyid:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/updatecurrencybyid'
-      description: ''
-      required: true
-    createnewmarket:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/createnewmarket'
-      description: ''
-      required: true
-    updatemarketstatusbyid:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/updatemarketstatusbyid'
-      description: ''
-      required: true
-    createnewwallet:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/createnewwallet'
-      description: ''
-      required: true
-    internal_transferwallet_(user_to_user):
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/internal_transferwallet_(user_to_user)'
-      description: ''
-      required: true
-    updatewalletbalanceby_(deposit):
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/updatewalletbalanceby_(deposit)'
-      description: ''
-      required: true
-    createneworder:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/createneworder'
-      description: ''
-      required: true
-    cancelorder:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/cancelorder'
-      description: ''
-      required: true
-    create_or_update_exchange_rates:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/create_or_update_exchange_rates'
-      description: ''
-      required: true
-    exchangewithmarket:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/exchangewithmarket'
-      description: ''
-      required: true
-  securitySchemes: {}
+          example: 3000000
+          description: "1 fromCurrency = rate toCurrency"
+        updatedAt:
+          type: string
+          format: date-time
+        fromCurrency:
+          $ref: '#/components/schemas/Currency'
+        toCurrency:
+          $ref: '#/components/schemas/Currency'

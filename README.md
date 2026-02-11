@@ -776,7 +776,7 @@ BTC/THB, ETH/THB, XRP/THB, DOGE/THB, BTC/USD, ETH/USD, XRP/USD, DOGE/USD, USD/TH
 ## คู่มือทดสอบระบบ Step by Step
 
 > ⚠️ **Order, Trade, Transaction** จะเกิดขึ้นผ่านการเรียก API จริง — ไม่ได้ seed ไว้  
-> เพราะ Matching Engine ต้องทำงานจริงๆ ถึงจะได้ข้อมูลที่สมจริง  
+> เพราะ Matching Order Buy Sell ต้องทำงานจริงๆ ถึงจะได้ข้อมูลที่สมจริง  
 > ทำตามขั้นตอนด้านล่างเพื่อสร้างข้อมูลครบทุกตาราง
 
 ### เตรียมพร้อม
