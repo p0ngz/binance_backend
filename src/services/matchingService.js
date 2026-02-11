@@ -37,7 +37,6 @@ const tryMatch = async (incomingOrder) => {
       { createdAt: "asc" },
     ],
   });
-  console.log("opposing Orders found: ", opposingOrders);
 
   if (opposingOrders.length === 0) return;
 

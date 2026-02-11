@@ -11,7 +11,6 @@ const verifyJWT = (req, res, next) => {
   }
 
   const token = authHeader.split(" ")[1];
-  console.log("token: ", token);
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, async (err, decoded) => {
     if (err) {
       return res.status(403).json({ message: "Forbidden — invalid token" });
@@ -19,13 +18,11 @@ const verifyJWT = (req, res, next) => {
 
     // ตรวจว่า session (ตาม sessionId ที่ฝังใน token) ยังอยู่ใน DB
     const sessionId = decoded.UserInfo.sessionId;
-    console.log("sessionId: ", sessionId);
     if (sessionId) {
       const activeSession = await prisma.refreshToken.findUnique({
         where: { id: sessionId },
       });
 
-      console.log("activeSession: ", activeSession);
       if (!activeSession) {
         return res
           .status(403)
@@ -47,7 +44,6 @@ const verifyJWT = (req, res, next) => {
       }
     }
 
-    console.log("verified => Decoded JWT:", decoded);
     // แนบข้อมูล user เข้า req เพื่อให้ controller ถัดไปใช้ได้
     req.userId = decoded.UserInfo.userId;
     req.email = decoded.UserInfo.email;
